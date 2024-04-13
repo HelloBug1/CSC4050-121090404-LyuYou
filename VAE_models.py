@@ -41,43 +41,49 @@ class Exp1VariationalAutoEncoder(nn.Module):
 class Encoder(nn.Module):
     def __init__(self):
         super(Encoder, self).__init__()
-        # Define the convolutional blocks
-        # The input size is 64x64x3
-        self.conv1 = nn.Conv2d(3, 16, kernel_size=3, stride=2, padding=1)
+        self.conv1 = nn.Conv2d(3, 16, kernel_size=3, stride=2, padding=1)  # 128x128
         self.bn1 = nn.BatchNorm2d(16)
-        self.conv2 = nn.Conv2d(16, 32, kernel_size=3, stride=2, padding=1)
+        self.conv2 = nn.Conv2d(16, 32, kernel_size=3, stride=2, padding=1)  # 64x64
         self.bn2 = nn.BatchNorm2d(32)
-        self.conv3 = nn.Conv2d(32, 64, kernel_size=3, stride=2, padding=1)
+        self.conv3 = nn.Conv2d(32, 64, kernel_size=3, stride=2, padding=1)  # 32x32
         self.bn3 = nn.BatchNorm2d(64)
+        self.conv4 = nn.Conv2d(64, 128, kernel_size=3, stride=2, padding=1)  # 16x16
+        self.bn4 = nn.BatchNorm2d(128)
+        self.conv5 = nn.Conv2d(128, 256, kernel_size=3, stride=2, padding=1)  # 8x8
+        self.bn5 = nn.BatchNorm2d(256)
         
         # Fully-connected layers for the bottleneck
-        self.fc_mu = nn.Linear(64 * 8 * 8, 20)
-        self.fc_logvar = nn.Linear(64 * 8 * 8, 20)
+        self.fc_mu = nn.Linear(256 * 8 * 8, 20)
+        self.fc_logvar = nn.Linear(256 * 8 * 8, 20)
         
     def forward(self, x):
-        # Apply convolutional blocks
         x = F.relu(self.bn1(self.conv1(x)))
         x = F.relu(self.bn2(self.conv2(x)))
         x = F.relu(self.bn3(self.conv3(x)))
-        x = x.view(-1, 64 * 8 * 8)  # Flatten the output for the fully-connected layer
-        # Output the mean and log variance for the latent space
+        x = F.relu(self.bn4(self.conv4(x)))
+        x = F.relu(self.bn5(self.conv5(x)))
+        x = x.view(-1, 256 * 8 * 8)  # Flatten the output
         mu = self.fc_mu(x)
         logvar = self.fc_logvar(x)
         return mu, logvar
 
+
 class Decoder(nn.Module):
     def __init__(self):
         super(Decoder, self).__init__()
-        # Initial fully connected layer
-        self.fc = nn.Linear(20, 64 * 8 * 8)
+        self.fc = nn.Linear(20, 256 * 8 * 8)  # Match the output size of Encoder's last layer
         
-        # Define deconvolutional blocks
-        self.deconv1 = nn.ConvTranspose2d(64, 32, kernel_size=4, stride=2, padding=1)
-        self.bn1 = nn.BatchNorm2d(32)
-        self.deconv2 = nn.ConvTranspose2d(32, 16, kernel_size=4, stride=2, padding=1)
-        self.bn2 = nn.BatchNorm2d(16)
-        self.deconv3 = nn.ConvTranspose2d(16, 8, kernel_size=4, stride=2, padding=1)
-        self.bn3 = nn.BatchNorm2d(8)
+        # Deconvolutional blocks
+        self.deconv1 = nn.ConvTranspose2d(256, 128, kernel_size=4, stride=2, padding=1)  # 16x16
+        self.bn1 = nn.BatchNorm2d(128)
+        self.deconv2 = nn.ConvTranspose2d(128, 64, kernel_size=4, stride=2, padding=1)  # 32x32
+        self.bn2 = nn.BatchNorm2d(64)
+        self.deconv3 = nn.ConvTranspose2d(64, 32, kernel_size=4, stride=2, padding=1)  # 64x64
+        self.bn3 = nn.BatchNorm2d(32)
+        self.deconv4 = nn.ConvTranspose2d(32, 16, kernel_size=4, stride=2, padding=1)  # 128x128
+        self.bn4 = nn.BatchNorm2d(16)
+        self.deconv5 = nn.ConvTranspose2d(16, 8, kernel_size=4, stride=2, padding=1)  # 256x256
+        self.bn5 = nn.BatchNorm2d(8)
         
         # Output layers
         self.out1 = nn.ConvTranspose2d(8, 3, kernel_size=3, stride=1, padding=1)
@@ -85,11 +91,12 @@ class Decoder(nn.Module):
         
     def forward(self, x):
         x = self.fc(x)
-        x = x.view(-1, 64, 8, 8)  # Reshape for deconvolution
+        x = x.view(-1, 256, 8, 8)  # Reshape for deconvolution
         x = F.relu(self.bn1(self.deconv1(x)))
         x = F.relu(self.bn2(self.deconv2(x)))
         x = F.relu(self.bn3(self.deconv3(x)))
-        # Two separate outputs
+        x = F.relu(self.bn4(self.deconv4(x)))
+        x = F.relu(self.bn5(self.deconv5(x)))
         return torch.sigmoid(self.out1(x)), torch.sigmoid(self.out2(x))
 
 
