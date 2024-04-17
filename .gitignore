@@ -5,3 +5,7 @@ exp2_outputs/
 data/
 dataset/
 checkpoints/
+*.7z
+*.zip
+pictures/
+models/
